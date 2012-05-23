@@ -109,7 +109,7 @@ bool fSuccess; // API call results
 
 //HMODULE hModuleThis;                   // handle to get version info
 
-static long nCspVolume; // Device volume setting
+/*static long nCspVolume; // Device volume setting*/
 static char szCspSwVersion[9] = { 0 }; // Device software version
 static char szCspDeviceId[9]; // Device ID
 static char szCspBarData[MAXSIZE]; // uploaded barcode storage
@@ -597,7 +597,14 @@ static long csp2ReadBytes(char *aBuffer, int nBytes) {
  *                 Use LONG_2_UCHAR to get byte
  *                 value if the greater than equal to zero.
  **********************************************************************/
-// 0x06 0x02 0x31 0x00 0x00 0x02 0x00 0x00 0x00 0x0E 0x1A 0x76 0x4E 0x42 0x52 0x49 0x4B 0x41 0x41 0x45 0x00 0x62 0x21
+// 0x06
+// 0x02
+// 0x31
+// 0x00
+// 0x00 0x02 0x00 0x00 0x00 0x0E 0x1A 0x76
+// 0x4E 0x42 0x52 0x49 0x4B 0x41 0x41 0x45
+// 0x00
+// 0x62 0x21
 static long csp2Getc(void) {
 	long i;
 	unsigned char chRead;
@@ -608,13 +615,14 @@ static long csp2Getc(void) {
 	for (i = 0; i < nDelayCount; i++) {
 		// try to read a character...
 		BytesRead = 0;
-
 		// Attempt to read 1 byte from the stream.
 		bRC = read(hCom, &chRead, 1);
 
 		// Check if ReadFile was successfull
 		if (bRC > 0) {
+#ifdef _DEBUG
 			TRACE("R[0x%02X] ", (unsigned char) chRead);
+#endif
 			return ((long) chRead);
 		} else if (bRC == 0) {
 			return -2;
@@ -623,26 +631,6 @@ static long csp2Getc(void) {
 			return COMMUNICATIONS_ERROR;
 		}
 
-		//		struct pollfd fds[1];
-		//		fds[0].fd = hCom;
-		//		fds[0].events = POLLIN | POLLPRI;
-		//		fds[0].revents = POLLIN | POLLPRI;
-		//		int pollrc = 0;
-		//
-		//		pollrc = poll(fds, 1, 200);
-		//		if (pollrc < 0) {
-		//			perror("poll");
-		//		} else if (pollrc > 0) {
-		//			if (fds[0].revents & POLLIN) {
-		//				//				char buff[1024];
-		//				ssize_t rc = read(hCom, &chRead, 1);
-		//				if (rc > 0) {
-		//					/* You've got rc characters. do something with buff */
-		//					TRACE("R[0x%02X] %d", (unsigned char) chRead, rc);
-		//					return ((long) chRead);
-		//				}
-		//			}
-		//		}
 		// let other tasks run while we wait for a character...
 		usleep(50000);
 	}
@@ -776,10 +764,9 @@ static long csp2SendCommand(char *aCommand, long nMaxLength) {
 	//   if (!fSuccess)
 	//      return(COMMUNICATIONS_ERROR);
 	//
-	int s = write(hCom, aCommand, nMaxLength);
+	/*int s = */write(hCom, aCommand, nMaxLength);
 	//printf("SEND: %d \n", s);
 	//hexdump(aCommand, nMaxLength);
-
 	TRACE("\n    STATUS:           ");
 	// Get status return
 	if ((nCspDeviceStatus = csp2Getc()) < 0)
@@ -906,7 +893,7 @@ int SetDTR(int on) {
  **********************************************************************/
 
 long csp2WakeUp(void) {
-	int retval, k, i;
+	int retval/*, k, i*/;
 	//	struct _timeb now;
 
 	// See if DTR is active
@@ -1150,15 +1137,11 @@ int csp2Init(int serial_fd) {
 	fcntl(hCom, F_SETOWN, getpid());
 
 	tcgetattr(hCom, &oldtio); /* save current port settings */
-	tcgetattr(hCom, &options);
+	//	tcgetattr(hCom, &options);
 	options.c_lflag &= ~(ICANON | ECHO);
 	options.c_cflag &= ~(CRTSCTS | CSTOPB | CSIZE | HUPCL);
-	//	term.c_cflag &= ~CSTOPB;
-	options.c_cflag |= PARENB;
-	//	term.c_cflag &= ~(CSIZE | HUPCL);
-	//	term.c_cflag |= CS8;
+	options.c_cflag |= (PARENB | PARODD);
 	options.c_cflag |= (CS8 | CLOCAL | CREAD);
-	//	term.c_iflag &= ~(IXON | IXOFF);
 	options.c_iflag |= (IGNBRK | IGNPAR | INPCK | IXANY);
 	options.c_iflag &= ~(IXON | IXOFF | BRKINT | IGNCR | ICRNL | INLCR | ISTRIP
 			| IUCLC | PARMRK);
@@ -1621,7 +1604,7 @@ long csp2SetTime(unsigned char aTimeBuf[]) {
 
 	TRACE("\n\nSet Time(SystemTime) %s\n", szDebugTime);
 	for (int k = 0; k < 6; k++)
-		TRACE("0x%X:", aTimeBuf[k]);
+	TRACE("0x%X:", aTimeBuf[k]);
 
 	TRACE("\n");
 #endif
@@ -1662,8 +1645,9 @@ long csp2SetTime(unsigned char aTimeBuf[]) {
 
 		// Adjust index.
 		i += nRetStatus;
-
+#ifdef _DEBUG
 		TRACE("\n                      ");
+#endif
 		nCSLength = nRetStatus = csp2Getc();
 	}
 
@@ -2974,67 +2958,60 @@ long csp2Interrogate(void) {
 // Note - time value return is at least 20 characters
 long csp2TimeStamp2Str(unsigned char *Stamp, char *value, long nMaxLength) {
 
-	//   char s[25],AMPM[3];
-	//	unsigned long hours,minutes,seconds,months,days,years;
+	char s[25], AMPM[3];
+	unsigned int hours, minutes, seconds, months, days, years;
 	long status;
-	//	union {
-	//		unsigned long l;
-	//		unsigned char c[4];
-	//	}TimeConvert;
-	//
-	//   // make sure parameters are valid
-	//   if(Stamp == NULL)
-	//      return(SETUP_ERROR);
-	//
-	//   if(value == NULL)
-	//      return(SETUP_ERROR);
-	//
-	//   if(nMaxLength < 0)
-	//      return(SETUP_ERROR);
-	//
-	//	TimeConvert.c[0] = Stamp[3]; // copy the timestamp into the union
-	//	TimeConvert.c[1] = Stamp[2]; // note that this is compiler sensitive
-	//	TimeConvert.c[2] = Stamp[1];
-	//	TimeConvert.c[3] = Stamp[0];
-	//
-	//	hours = RTC_Get_Hours(TimeConvert.l);
-	//	minutes = RTC_Get_Minutes(TimeConvert.l);
-	//	seconds = RTC_Get_Seconds(TimeConvert.l);
-	//	months = RTC_Get_Months(TimeConvert.l);
-	//	days = RTC_Get_Days(TimeConvert.l);
-	//	years = RTC_Get_Years(TimeConvert.l);
-	//
-	//
-	//   strcpy(AMPM,"AM");
-	//   if (hours > 11)
-	//   {
-	//		hours -= 12;
-	//		AMPM[0] = 'P';
-	//	}
-	//   if (hours == 0)
-	//        hours = 12;
-	//
-	//   // Check to see if there is an error.
-	//   // if the value is 63 (the 6 bit second field is set to all 1s)
-	//   // then it is most likely that the time is suspect.
-	//   if (seconds != 63)
-	//   {
-	//      // Time is OK
-	//      sprintf(s,"%2d:%02d:%02d %s %2d/%0d/%02d",
-	//		        hours,minutes,seconds,AMPM,
-	//		        months,days,years);
-	status = STATUS_OK;
-	//   }
-	//   else
-	//   {
-	//      // Time is suspect.
-	//      sprintf(s,"%2d:%02d:?? %s %2d/%0d/%02d",
-	//		        hours,minutes,AMPM,
-	//		        months,days,years);
-	//      status = BAD_PARAM;
-	//   }
-	//
-	//   strncpy(value,s,nMaxLength);
+	union {
+		unsigned long l;
+		unsigned char c[4];
+	} TimeConvert;
+
+	// make sure parameters are valid
+	if (Stamp == NULL)
+		return (SETUP_ERROR);
+
+	if (value == NULL)
+		return (SETUP_ERROR);
+
+	if (nMaxLength < 0)
+		return (SETUP_ERROR);
+
+	TimeConvert.c[0] = Stamp[3]; // copy the timestamp into the union
+	TimeConvert.c[1] = Stamp[2]; // note that this is compiler sensitive
+	TimeConvert.c[2] = Stamp[1];
+	TimeConvert.c[3] = Stamp[0];
+
+	hours = RTC_Get_Hours(TimeConvert.l);
+	minutes = RTC_Get_Minutes(TimeConvert.l);
+	seconds = RTC_Get_Seconds(TimeConvert.l);
+	months = RTC_Get_Months(TimeConvert.l);
+	days = RTC_Get_Days(TimeConvert.l);
+	years = RTC_Get_Years(TimeConvert.l);
+
+	strcpy(AMPM, "AM");
+	if (hours > 11) {
+		hours -= 12;
+		AMPM[0] = 'P';
+	}
+	if (hours == 0)
+		hours = 12;
+
+	// Check to see if there is an error.
+	// if the value is 63 (the 6 bit second field is set to all 1s)
+	// then it is most likely that the time is suspect.
+	if (seconds != 63) {
+		// Time is OK
+		sprintf(s, " %2d:%02d:%02d %s %2d/%0d/%02d", hours, minutes, seconds,
+				AMPM, months, days, years);
+		status = STATUS_OK;
+	} else {
+		// Time is suspect.
+		sprintf(s, "%2d:%02d:?? %s %2d/%0d/%02d", hours, minutes, AMPM, months,
+				days, years);
+		status = BAD_PARAM;
+	}
+
+	strncpy(value, s, nMaxLength);
 	return (status);
 }
 

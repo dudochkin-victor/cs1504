@@ -155,16 +155,16 @@ int main(int argc, char* argv[])
 		for (i=0;i<BarcodesRead;i++)
 		{
 			PacketLength = csp2GetPacket(Packet,i,63); /* Read packets */
-			printf("\nBarcode %d\n", i+1);
+//			printf("\nBarcode %d\n", i+1);
 			/* print out packet (hex) */
-			for (k=0;k<PacketLength;k++) printf(" %02X",(unsigned char) Packet[k]);
+//			for (k=0;k<PacketLength;k++) printf(" %02X",(unsigned char) Packet[k]);
 			printf("\n");
 
 			if ((PacketLength>0)&& (AsciiMode==PARAM_ON)) /* normal packet processing */
 			{
 				/* convert ascii mode code type to string */
 				nRetStatus = csp2GetCodeType((long)Packet[1],aBuffer,30);
-				printf("CodeConversion returns: %d\n",nRetStatus);
+//				printf("CodeConversion returns: %d\n",nRetStatus);
 				strcat(aBuffer," ");
 
 				if (RTC==PARAM_ON) /* convert timestamp if necessary */
