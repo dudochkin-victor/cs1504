@@ -12,8 +12,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <fcntl.h>
-#include <errno.h>
-#include <sys/poll.h>
+
 using namespace std;
 
 //#define _DEBUG 1
@@ -597,14 +596,7 @@ static long csp2ReadBytes(char *aBuffer, int nBytes) {
  *                 Use LONG_2_UCHAR to get byte
  *                 value if the greater than equal to zero.
  **********************************************************************/
-// 0x06
-// 0x02
-// 0x31
-// 0x00
-// 0x00 0x02 0x00 0x00 0x00 0x0E 0x1A 0x76
-// 0x4E 0x42 0x52 0x49 0x4B 0x41 0x41 0x45
-// 0x00
-// 0x62 0x21
+
 static long csp2Getc(void) {
 	long i;
 	unsigned char chRead;
@@ -764,10 +756,11 @@ static long csp2SendCommand(char *aCommand, long nMaxLength) {
 	//   if (!fSuccess)
 	//      return(COMMUNICATIONS_ERROR);
 	//
-	/*int s = */write(hCom, aCommand, nMaxLength);
+	/*int s = */
+	write(hCom, aCommand, nMaxLength);
 	//printf("SEND: %d \n", s);
 	//hexdump(aCommand, nMaxLength);
-	TRACE("\n    STATUS:           ");
+
 	// Get status return
 	if ((nCspDeviceStatus = csp2Getc()) < 0)
 		return COMMUNICATIONS_ERROR;
@@ -865,7 +858,6 @@ long GetDTR() {
 
 int SetDTR(int on) {
 	int controlbits = TIOCM_DTR;
-	cout << "SET " << on << endl;
 	if (on)
 		return (ioctl(hCom, TIOCMBIC, &controlbits));
 	else
@@ -898,7 +890,6 @@ long csp2WakeUp(void) {
 
 	// See if DTR is active
 	retval = GetDTR();
-	cout << "RETVAL " << retval << endl;
 	if (retval < 0)
 		return (COMMUNICATIONS_ERROR);
 	if (retval > 0) {
@@ -1062,10 +1053,8 @@ struct termios oldtio;
 int csp2Init(int serial_fd) {
 	int bits;
 	struct termios options;
-	//	const char Ports[16][10] = { "COM1", "COM2", "COM3", "COM4", "COM5",
-	//			"COM6", "COM7", "COM8", "COM9", "\\\\.\\COM10", "\\\\.\\COM11",
-	//			"\\\\.\\COM12", "\\\\.\\COM13", "\\\\.\\COM14", "\\\\.\\COM15",
-	//			"\\\\.\\COM16" };
+	memset(&options, '\0', sizeof(options));
+
 	//
 	//	COMMTIMEOUTS TimeOuts;
 	//
@@ -1407,19 +1396,16 @@ long csp2ClearData(void) {
 	i = 1;
 
 	// get the STX character...
-	TRACE("\n    STX:              ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 	aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 	// get the NULL character...
-	TRACE("\n    NULL:             ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 	aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 	// verify the CRC...
-	TRACE("\n    CRC:              ");
 	if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 2)) < 0)
 		return nRetStatus;
 
@@ -1486,7 +1472,6 @@ long csp2SetDefaults(void) {
 	i = 1;
 
 	// get the STX character...
-	TRACE("\n    STX:              ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 
@@ -1523,7 +1508,6 @@ long csp2SetDefaults(void) {
 	aByteBuffer[i++] = LONG_2_UCHAR(nCSLength);
 
 	// verify the CRC...
-	TRACE("\n    CRC:              ");
 	if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 2)) < 0)
 		return nRetStatus;
 
@@ -1617,7 +1601,6 @@ long csp2SetTime(unsigned char aTimeBuf[]) {
 	i = 1;
 
 	// get the STX character...
-	TRACE("\n    STX:              ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 
@@ -1625,7 +1608,6 @@ long csp2SetTime(unsigned char aTimeBuf[]) {
 
 	// read in the counted string until a NULL occurs...
 	// first byte "j" is the length of the counted string...
-	TRACE("\n    Counted String:   ");
 
 	nCSLength = nRetStatus = csp2Getc();
 
@@ -1729,7 +1711,6 @@ long csp2GetTime(unsigned char aTimeBuf[]) {
 	i = 1;
 
 	// get the STX character...
-	TRACE("\n    STX:              ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 
@@ -1818,21 +1799,18 @@ long csp2PowerDown(void) {
 	// Response looks good, get the entire message...
 	i = 1;
 	// get the STX character...
-	TRACE("\n    STX:              ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 
 	aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 	// get the NULL character...
-	TRACE("\n    NULL:             ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 
 	aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 	// verify the CRC...
-	TRACE("\n    CRC:              ");
 	if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 2)) < 0)
 		return nRetStatus;
 
@@ -1935,22 +1913,22 @@ long csp2GetPacket(char szBarData[], long nBarcodeNumber, long nMaxLength) {
  * Notes:
  **********************************************************************/
 
-long csp2GetDeviceId(char szDeviceId[8], long nMaxLength) {
-	//	// did the user only request the string's length?
-	//	if (szDeviceId == NULL)
-	//		return (SETUP_ERROR);
-	//	if (nMaxLength <= DETERMINE_SIZE)
-	//		return (SETUP_ERROR);
-	//
-	//	if ((nMaxLength > DETERMINE_SIZE) && (nCspActivePort >= COM1)) {
-	//		// get the maximum number of characters to copy...
-	//		nMaxLength = min(sizeof(szCspDeviceId), nMaxLength);
-	//
-	//		// copy the Device ID...
-	//		memcpy(szDeviceId, szCspDeviceId, nMaxLength);
-	//		nDeviceIdLen = nMaxLength;
-	//		return (nMaxLength);
-	//	}
+long csp2GetDeviceId(char szDeviceId[8], unsigned int nMaxLength) {
+	// did the user only request the string's length?
+	if (szDeviceId == NULL)
+		return (SETUP_ERROR);
+	if (nMaxLength <= DETERMINE_SIZE)
+		return (SETUP_ERROR);
+
+	if ((nMaxLength > DETERMINE_SIZE) && (nCspActivePort >= COM1)) {
+		// get the maximum number of characters to copy...
+		nMaxLength = min(sizeof(szCspDeviceId), nMaxLength);
+
+		// copy the Device ID...
+		memcpy(szDeviceId, szCspDeviceId, nMaxLength);
+		nDeviceIdLen = nMaxLength;
+		return (nMaxLength);
+	}
 
 	return (0);
 }
@@ -2073,23 +2051,23 @@ long csp2GetSystemStatus(void) {
  * Notes:
  **********************************************************************/
 
-long csp2GetSwVersion(char szSwVersion[9], long nMaxLength) {
-	//	if (szSwVersion == NULL) {
-	//		TRACE("NULL buffer!\n");
-	//		return (SETUP_ERROR);
-	//	}
-	//	// did the user an illegal string length?
-	//	if (nMaxLength <= DETERMINE_SIZE) {
-	//		return (SETUP_ERROR);
-	//	}
-	//	// get the maximum number of characters to copy...
-	//	nMaxLength = min(sizeof(szCspSwVersion), nMaxLength);
-	//
-	//	// copy the Software Version...
-	//	memcpy(szSwVersion, szCspSwVersion, nMaxLength);
-	//
-	//	// and null terminate the string...
-	//	szSwVersion[nMaxLength - 1] = 0;
+long csp2GetSwVersion(char szSwVersion[9], unsigned int nMaxLength) {
+	if (szSwVersion == NULL) {
+		TRACE("NULL buffer!\n");
+		return (SETUP_ERROR);
+	}
+	// did the user an illegal string length?
+	if (nMaxLength <= DETERMINE_SIZE) {
+		return (SETUP_ERROR);
+	}
+	// get the maximum number of characters to copy...
+	nMaxLength = min(sizeof(szCspSwVersion), nMaxLength);
+
+	// copy the Software Version...
+	memcpy(szSwVersion, szCspSwVersion, nMaxLength);
+
+	// and null terminate the string...
+	szSwVersion[nMaxLength - 1] = 0;
 
 	return (nMaxLength);
 }
@@ -2297,14 +2275,12 @@ long csp2ReadRawData(char aBuffer[], long nMaxLength) {
 	i = 1;
 
 	// get the STX character...
-	TRACE("\n    STX:             :");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 
 	aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 	// get the Device id characters...
-	TRACE("\n    Device ID:       :");
 	if ((nRetStatus = csp2ReadBytes(szCspDeviceId, 8)) < 0)
 		return nRetStatus;
 	memcpy(&aByteBuffer[i], szCspDeviceId, 8);
@@ -2313,7 +2289,6 @@ long csp2ReadRawData(char aBuffer[], long nMaxLength) {
 	// read in the counted strings until a NULL occurs...
 	nBarcodes = nCspStoredBarcodes = 0;
 
-	TRACE("\n    Counted String:  :");
 	nCSLength = nRetStatus = csp2Getc();
 
 	// Set the Start of Barcode Data
@@ -2334,7 +2309,6 @@ long csp2ReadRawData(char aBuffer[], long nMaxLength) {
 
 		// Increment the number of barcodes stored...
 		nBarcodes++;
-		TRACE("\n                      ");
 
 		// Read the next length
 		nCSLength = nRetStatus = csp2Getc();
@@ -2347,7 +2321,6 @@ long csp2ReadRawData(char aBuffer[], long nMaxLength) {
 	aByteBuffer[i++] = LONG_2_UCHAR(nCSLength);
 
 	// Get the CRC
-	TRACE("\n    CRC:             :");
 	if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 2)) < 0)
 		return nRetStatus;
 
@@ -2447,14 +2420,12 @@ long csp2SetMultiParam(char szString[], long nMaxLength) {
 	i = 1;
 
 	// get the STX character...
-	TRACE("\n    STX:              ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 	aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 	// read in the counted string until a NULL occurs...
 	// first byte "j" is the length of the counted string...
-	TRACE("\n    Counted String:   ");
 
 	nCSLength = nRetStatus = csp2Getc();
 
@@ -2466,7 +2437,6 @@ long csp2SetMultiParam(char szString[], long nMaxLength) {
 		if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], nCSLength)) < 0)
 			break;
 
-		TRACE("\n                      ");
 		// Adjust the index of i..
 		i += nRetStatus;
 
@@ -2482,7 +2452,6 @@ long csp2SetMultiParam(char szString[], long nMaxLength) {
 	aByteBuffer[i++] = LONG_2_UCHAR(nCSLength);
 
 	// verify the CRC...
-	TRACE("\n    CRC:              ");
 	if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 2)) < 0)
 		return nRetStatus;
 	if (VerifyCRC((unsigned char *) aByteBuffer, i) != true)
@@ -2574,14 +2543,12 @@ long csp2SetParam(long nParam, char szString[], long nMaxLength) {
 	i = 1;
 
 	// get the STX character...
-	TRACE("\n    STX:              ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 	aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 	// read in the counted string until a NULL occurs...
 	// first byte "j" is the length of the counted string...
-	TRACE("\n    Counted String:   ");
 
 	nCSLength = nRetStatus = csp2Getc();
 
@@ -2609,7 +2576,6 @@ long csp2SetParam(long nParam, char szString[], long nMaxLength) {
 	aByteBuffer[i++] = LONG_2_UCHAR(nCSLength);
 
 	// verify the CRC...
-	TRACE("\n    CRC:              ");
 	if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 2)) < 0)
 		return nRetStatus;
 
@@ -2735,15 +2701,12 @@ static long GetParam(int nParam, char szString[], long nMaxLength) {
 	i = 1;
 
 	// get the STX character...
-	TRACE("\n    STX:              ");
 	if ((nRetStatus = csp2Getc()) < 0)
 		return nRetStatus;
 	aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 	// read in the counted string until a NULL occurs...
 	// first byte "j" is the length of the counted string...
-	TRACE("\n    Counted String:   ");
-
 	nCSLength = nRetStatus = csp2Getc();
 
 	while (nCSLength > 0) {
@@ -2761,7 +2724,6 @@ static long GetParam(int nParam, char szString[], long nMaxLength) {
 
 		// Adjust the index;
 		i += nRetStatus;
-		TRACE("\n                      ");
 
 		// Get next length;
 		nCSLength = nRetStatus = csp2Getc();
@@ -2774,7 +2736,6 @@ static long GetParam(int nParam, char szString[], long nMaxLength) {
 	aByteBuffer[i++] = LONG_2_UCHAR(nCSLength);
 
 	// verify the CRC...
-	TRACE("\n    CRC:              ");
 	if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 2)) < 0)
 		return nRetStatus;
 
@@ -2827,7 +2788,6 @@ long csp2Interrogate(void) {
 	long nRetStatus;
 	long nCount = nCspRetryCount;
 
-	TRACE("Starting to Interrogate the device\n");
 	// interrogate the CSP device up to nCspRetryCount+1 times...
 	do {
 
@@ -2865,7 +2825,6 @@ long csp2Interrogate(void) {
 		// Response looks good, get the entire message...
 		i = 1;
 		// get the STX character...
-		TRACE("\n    STX              :");
 		if ((nRetStatus = csp2Getc()) < 0) {
 			continue; // RESEND IF NO CONNECTED
 			//return nRetStatus;
@@ -2873,19 +2832,16 @@ long csp2Interrogate(void) {
 		aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 		// get the protocol version character...
-		TRACE("\n    Protocol Version :");
 		if ((nCspProtocolVersion = nRetStatus = csp2Getc()) < 0)
 			return nRetStatus;
 		aByteBuffer[i++] = LONG_2_UCHAR(nCspProtocolVersion);
 
 		// get the system status character...
-		TRACE("\n    System Status    :");
 		if ((nCspSystemStatus = nRetStatus = csp2Getc()) < 0)
 			return nRetStatus;
 		aByteBuffer[i++] = LONG_2_UCHAR(nCspSystemStatus);
 
 		// get the user id characters...
-		TRACE("\n    Device ID        :");
 		if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 8)) < 0)
 			return nRetStatus;
 
@@ -2896,7 +2852,6 @@ long csp2Interrogate(void) {
 		i += nRetStatus;
 
 		// get the software version characters...
-		TRACE("\n    Software Version :");
 		if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 8)) < 0)
 			return nRetStatus;
 
@@ -2907,13 +2862,11 @@ long csp2Interrogate(void) {
 		i += nRetStatus;
 
 		// get the NULL character...
-		TRACE("\n    NULL             :");
 		if ((nRetStatus = csp2Getc()) < 0)
 			return nRetStatus;
 		aByteBuffer[i++] = LONG_2_UCHAR(nRetStatus);
 
 		// verify the CRC...
-		TRACE("\n    CRC              :");
 		if ((nRetStatus = csp2ReadBytes(&aByteBuffer[i], 2)) < 0)
 			return nRetStatus;
 

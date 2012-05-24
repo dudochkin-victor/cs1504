@@ -134,10 +134,10 @@ long csp2SetDefaults(void);
 
 // CSP Data Get
 long csp2GetPacket(char szBarData[], long nBarcodeNumber, long nMaxLength);
-long csp2GetDeviceId(char szDeviceId[8], long nMaxLength);
+long csp2GetDeviceId(char szDeviceId[8], unsigned int nMaxLength);
 long csp2GetProtocol(void);
 long csp2GetSystemStatus(void);
-long csp2GetSwVersion(char szSwVersion[9], long nMaxLength);
+long csp2GetSwVersion(char szSwVersion[9], unsigned int nMaxLength);
 long csp2GetASCIIMode(void);
 long csp2GetRTCMode(void);
 

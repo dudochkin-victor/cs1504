@@ -1,61 +1,9 @@
-/*******************************************************************************
- *
- *  Filename:      TestConsole.cppp
- *
- *  Copyright(c) Symbol Technologies Inc., 2001
- *
- *  Description:     Defines the entry point for the console application.
- *
- *  Author:          Chris Brock.
- *
- *  Creation Date:   ?/?/??
- *
- *  Derived From:    New File
- *
- *  Edit History:
- *   $Log:   U:/keyfob/archives/winfob/examples/msvc/TestConsole.cpV  $
- *
- *    Rev 1.4   Feb 08 2002 11:50:08   pangr
- * Added psuedocode and changed code format
- *
- *    Rev 1.3   Jan 29 2002 14:34:34   pangr
- * Removed Reference to debug.h
- *
- *    Rev 1.2   Jan 29 2002 13:53:14   pangr
- * Header format change. No code change.
- *
- *    Rev 1.1   Jan 25 2002 15:30:50   pangr
- * Initial release.  Added command line paramenter to select the COM port.
- * If none is specified, then COM1 is the default.
- *
-*******************************************************************************/
-
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
 #include "csp2.h"
 
-#include <unistd.h>
-#include <errno.h>
-
-#define COMPORT_ARG		"p"
-#define HELP_ARG		"h"
-
 const char *dev = "/dev/ttyUSB0";
-
-static const char *comports[] =
-{
-	"COM1", "COM2", "COM3", "COM4", "COM5", "COM6","COM7", "COM8", "COM9",
-	"COM10","COM11", "COM12", "COM13", "COM14",	"COM15", "COM16"
-};
-
-// Displays Help
-static void display_help(const char *exename) {
-
-	printf("Usage:\n%s [<%s port>| %s]\nwhere port is COM port COM1..COM16\n"
-		"Note: COMX is case sensitive!\n"
-		,exename, COMPORT_ARG, HELP_ARG);
-}
 
 int SetDTR(int on);
 int main(int argc, char* argv[])
@@ -64,7 +12,6 @@ int main(int argc, char* argv[])
 	int	PacketLength,BarcodesRead;
 	char	Packet[64],aBuffer[256],TimeStamp[32];
 	int		i,k;
-	long	nComPort = 0;		/* the default comport is 1 */
 
 //	/* Check to see if we have any command line arguments. */
 //	if (argc > 1 )
@@ -155,11 +102,6 @@ int main(int argc, char* argv[])
 		for (i=0;i<BarcodesRead;i++)
 		{
 			PacketLength = csp2GetPacket(Packet,i,63); /* Read packets */
-//			printf("\nBarcode %d\n", i+1);
-			/* print out packet (hex) */
-//			for (k=0;k<PacketLength;k++) printf(" %02X",(unsigned char) Packet[k]);
-			printf("\n");
-
 			if ((PacketLength>0)&& (AsciiMode==PARAM_ON)) /* normal packet processing */
 			{
 				/* convert ascii mode code type to string */
@@ -192,8 +134,6 @@ int main(int argc, char* argv[])
 
 		} /* end of read packets loop */
 	}
-	printf("\nPress return to exit");
-	getchar(); /* wait for keyboard to exit */
 	return 0;
 }
 
