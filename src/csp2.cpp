@@ -65,7 +65,6 @@ using namespace std;
  *******************************************************************************/
 /* default settings */
 int nDelayCount = MAXTIME; // used for interrogate timeouts
-long nCspActivePort = -1; // no comm port selected
 long nCspDeviceStatus = -1; // no current Device status
 long nCspProtocolVersion = -1; // no protocol version available
 long nCspSystemStatus = -1; // no system status available
@@ -688,7 +687,6 @@ static char csp2LrcCheck(char aLrcBytes[], long nMaxLength) {
  **********************************************************************/
 
 static void csp2InitParms(void) {
-	nCspActivePort = -1; // no comm port selected
 	nCspDeviceStatus = -1; // no current Device status
 	nCspProtocolVersion = -1; // no protocol version available
 	nCspSystemStatus = -1; // no system status available
@@ -738,10 +736,6 @@ static void csp2InitParms(void) {
 
 static long csp2SendCommand(char *aCommand, long nMaxLength) {
 	//   DWORD nBytesWritten;
-	//
-	//   // make sure we have a valid port selected...
-	//   if (nCspActivePort < COM1)
-	//      return( COMMUNICATIONS_ERROR );
 	//
 	// delay before sending message
 	usleep(200000);
@@ -995,10 +989,6 @@ long csp2SetDTR(long nOnOff) {
 long csp2DataAvailable(void) {
 	int retval;
 
-	//	// make sure we have a valid port selected...
-	//	if (nCspActivePort < COM1)
-	//		return (COMMUNICATIONS_ERROR);
-
 	// See if DTR is active
 	retval = GetDTR();
 	if (retval < 0)
@@ -1058,14 +1048,11 @@ int csp2Init(int serial_fd) {
 	//
 	//	COMMTIMEOUTS TimeOuts;
 	//
-	TRACE("Starting cs1504 communction\n");
 	hCom = serial_fd;
 	//
 	//	// is the user requesting a valid port?
 	//	if ((nComPort >= COM1) && (nComPort <= COM16)) {
 	//		// close any previously opened ports...
-	//		if (nCspActivePort >= COM1)
-	//			csp2Restore();//CloseHandle(hCom);// should restore here
 	//
 	//		memset(&PwrDwnTime, 0, sizeof(PwrDwnTime));
 	//		hCom = CreateFile(Ports[nComPort], GENERIC_READ | GENERIC_WRITE, 0, // comm devices must be opened w/exclusive-access
@@ -1196,8 +1183,6 @@ int csp2Init(int serial_fd) {
 	//			return (COMMUNICATIONS_ERROR);
 	//		}
 	//
-	//		nCspActivePort = nComPort;
-	//
 	return (STATUS_OK);
 	//	}
 
@@ -1229,19 +1214,16 @@ long csp2Restore(void) {
 	//	long nRetStatus = COMMUNICATIONS_ERROR;
 	//	fSuccess = NULL;
 	//	// are we attempting to close a valid port?
-	//	if (nCspActivePort >= COM1) {
-	//
 	//		// Stop any polling
 	//		(void) csp2StopPolling();
 	//
-	//		TRACE("\nClosing ComPort %d.\n", nCspActivePort + 1);
+	//		TRACE("\nClosing ComPort.\n");
 	//		// close any previously opened ports...
 	//		if (hCom != INVALID_HANDLE_VALUE) {
 	//			fSuccess = SetCommState(hCom, &OriginalDcb);
 	//		}
 	//		fSuccess = CloseHandle(hCom);
 	//		hCom = INVALID_HANDLE_VALUE;
-	//	}
 	//
 	//	// initialize the dll interface...
 	//	csp2InitParms();
@@ -1293,7 +1275,6 @@ long csp2ReadData(void) {
 
 	csp2SetDebugMode(1); // was 0!
 
-	TRACE("\nIn csp2ReadData\n");
 	// wake up the device
 	nRetStatus = csp2WakeUp();
 	// if response not available, reply with error
@@ -1306,7 +1287,7 @@ long csp2ReadData(void) {
 	nRetStatus = csp2Interrogate();
 	// if response not available, reply with error
 	if (nRetStatus < 0) {
-		TRACE("\nfailed interrogate!\n");
+		TRACE("failed interrogate!\n");
 		return (nRetStatus);
 	}
 	// Get Ascii Mode setting
@@ -1325,7 +1306,7 @@ long csp2ReadData(void) {
 	}
 	nCspRTC = (long) ParamValue[0];
 
-	TRACE("\nAscii Mode: %d, RTC Mode %d.\n", nCspASCII, nCspRTC);
+	//TRACE("\nAscii Mode: %d, RTC Mode %d.\n", nCspASCII, nCspRTC);
 
 	// read the data from the CSP device
 	nRetStatus = csp2ReadRawData(aByteBuffer, DETERMINE_SIZE);
@@ -1920,7 +1901,8 @@ long csp2GetDeviceId(char szDeviceId[8], unsigned int nMaxLength) {
 	if (nMaxLength <= DETERMINE_SIZE)
 		return (SETUP_ERROR);
 
-	if ((nMaxLength > DETERMINE_SIZE) && (nCspActivePort >= COM1)) {
+	if (nMaxLength > DETERMINE_SIZE) {
+
 		// get the maximum number of characters to copy...
 		nMaxLength = min(sizeof(szCspDeviceId), nMaxLength);
 
@@ -1930,7 +1912,7 @@ long csp2GetDeviceId(char szDeviceId[8], unsigned int nMaxLength) {
 		return (nMaxLength);
 	}
 
-	return (0);
+	return 0;
 }
 
 /*********************************************************************                      
@@ -2954,12 +2936,12 @@ long csp2TimeStamp2Str(unsigned char *Stamp, char *value, long nMaxLength) {
 	// then it is most likely that the time is suspect.
 	if (seconds != 63) {
 		// Time is OK
-		sprintf(s, " %2d:%02d:%02d %s %2d/%0d/%02d", hours, minutes, seconds,
+		sprintf(s, "%02d:%02d:%02d %s %2d/%0d/%02d", hours, minutes, seconds,
 				AMPM, months, days, years);
 		status = STATUS_OK;
 	} else {
 		// Time is suspect.
-		sprintf(s, "%2d:%02d:?? %s %2d/%0d/%02d", hours, minutes, AMPM, months,
+		sprintf(s, "%02d:%02d:?? %s %2d/%0d/%02d", hours, minutes, AMPM, months,
 				days, years);
 		status = BAD_PARAM;
 	}
@@ -3005,9 +2987,11 @@ long csp2GetCodeType(unsigned long CodeID, char *CodeType, long nMaxLength) {
 	for (i = 0; i < (sizeof(CodeTypes) / sizeof(CodeTypeStruct)); i++)
 		if (CodeTypes[i].CodeId == CodeID)
 			break;
+	const char type[] = "{\"type\":\"";
+	strncpy(CodeType ,type, sizeof(type));
 
 	if (i < (sizeof(CodeTypes) / sizeof(CodeTypeStruct))) {
-		strncpy(CodeType, CodeTypes[i].CodeType, nMaxLength);
+		strncat(CodeType, CodeTypes[i].CodeType, nMaxLength);
 		return (STATUS_OK);
 	}
 	strncpy(CodeType, "Unknown", nMaxLength);

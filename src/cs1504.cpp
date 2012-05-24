@@ -79,26 +79,26 @@ int main(int argc, char* argv[])
 	{
 		/* save number of barcodes read into DLL */
 		BarcodesRead = nRetStatus;
-		printf("Read %d packets\n", BarcodesRead);
+		//printf("Read %d packets\n", BarcodesRead);
 
 		/* Get Device Id */
 		nRetStatus = csp2GetDeviceId(aBuffer, 8);
-		printf("Device ID ");
+		printf("{\n\"DeviceID\": \"");
 		for (k=0;k<nRetStatus;k++)
 			printf(" %02X",(unsigned char) aBuffer[k]);
 
 		/* Get Device Software Revision */
 		nRetStatus = csp2GetSwVersion(aBuffer, 9);
-		printf("\nDevice SW Version: %s\n", aBuffer);
+		printf("\",\n\"DeviceSW\" : \"%s\",\n", aBuffer);
 
 		/* Get packet type (ASCII/Binary) */
 		AsciiMode = csp2GetASCIIMode();
-		printf("ASCII Mode = %d",AsciiMode);
+		//printf("ASCII Mode = %d",AsciiMode);
 
 		/* Get TimeStamp setting (on/off) */
 		RTC=csp2GetRTCMode();
-		printf(", RTC Mode = %d\n",RTC);
-
+		//printf(", RTC Mode = %d\n",RTC);
+		printf("\"data\": [\n");
 		for (i=0;i<BarcodesRead;i++)
 		{
 			PacketLength = csp2GetPacket(Packet,i,63); /* Read packets */
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
 				/* convert ascii mode code type to string */
 				nRetStatus = csp2GetCodeType((long)Packet[1],aBuffer,30);
 //				printf("CodeConversion returns: %d\n",nRetStatus);
-				strcat(aBuffer," ");
+				strcat(aBuffer,"\", ");
 
 				if (RTC==PARAM_ON) /* convert timestamp if necessary */
 				{
@@ -116,10 +116,21 @@ int main(int argc, char* argv[])
 									  TimeStamp,30);
 					/* append barcode (less timestamp) to codetype */
 					/* offset: timestamp=4, len=1, codetype = 1 */
+					const char code[] = "\"code\": \"";
+					strncat(aBuffer,code, sizeof(code));
 					strncat(aBuffer,Packet+2,PacketLength-6);
 
 					/* append timestamp */
+					const char time[] = "\", \"time\": \"";
+					strncat(aBuffer,time, sizeof(time));
 					strcat(aBuffer,TimeStamp);
+
+					const char endline[] = "\"},";
+					const char endline1[] = "\"}";
+					if (i == BarcodesRead-1)
+						strncat(aBuffer,endline1, sizeof(endline1));
+					else
+						strncat(aBuffer,endline, sizeof(endline));
 				}
 
 				/* if no RTC just append barcode to codetype (no timestamp) */
@@ -133,6 +144,7 @@ int main(int argc, char* argv[])
 			}
 
 		} /* end of read packets loop */
+		printf("]\n}\n");
 	}
 	return 0;
 }
