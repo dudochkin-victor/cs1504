@@ -13,7 +13,8 @@ Maximum compatible with official SDK For Windows
 Compile:
 ========
 
- cd build 
+ cd build
+
  cmake .. && make
 
 Install:
@@ -26,3 +27,8 @@ Thats all )))
 TODO:
 ====
 - nodejs module bindings
+
+LICENSE:
+========
+
+MIT
