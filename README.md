@@ -10,7 +10,19 @@ JSON data output.
 
 Maximum compatible with official SDK For Windows
 
-TODO
+Compile:
+========
+
+ cd build 
+ cmake .. && make
+
+Install:
+========
+
+ sudo make install
+
+Thats all )))
+
+TODO:
 ====
 - nodejs module bindings
-- cmake buildings
